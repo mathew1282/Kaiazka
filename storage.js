@@ -6,44 +6,74 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let supabaseClient = null;
 
-// Inicjalizacja Supabase
-function initSupabase() {
-    if (supabaseClient) return supabaseClient;
-    
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function getSupabase() {
+    if (!supabaseClient) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
     return supabaseClient;
 }
 
 // ======================
-// GŁÓWNE FUNKCJE
+// DEFAULT STATE
+// ======================
+const defaultState = {
+    dane: {
+        columns: [
+            "Imię",
+            "Nazwisko",
+            "Stopień",
+            "Numer służbowy",
+            "Telefon"
+        ],
+        rows: []
+    },
+    zgloszenia: {
+        columns: ["Linia", "Opis"],
+        rows: []
+    },
+    polecenia: {
+        columns: ["Linia", "Opis"],
+        rows: []
+    },
+    patrole: [],
+    szablony: [],
+    // Pola zapamiętywane na stałe
+    kz: "",
+    mkk: ""
+};
+
+let appState = { ...defaultState };
+
+// ======================
+// FUNKCJE ZAPISU / ODCZYTU
 // ======================
 
-// Zapisz stan aplikacji
 async function saveState() {
-    const client = initSupabase();
-    
+    // Zawsze zapisujemy lokalnie jako backup
+    localStorage.setItem("sokData", JSON.stringify(appState));
+
+    const client = getSupabase();
     try {
         const { error } = await client
             .from('app_state')
             .upsert({
-                id: 1,                    // pojedynczy rekord
+                id: 1,
                 name: 'main_state',
                 data: appState,
                 updated_at: new Date().toISOString()
             }, { onConflict: 'id' });
 
         if (error) throw error;
-        console.log("✅ Dane zapisane na serwerze");
+        console.log("✅ Dane zapisane na serwerze (Supabase)");
+        return true;
     } catch (err) {
-        console.error("Błąd zapisu:", err);
-        // fallback na localStorage
-        localStorage.setItem("sokData", JSON.stringify(appState));
+        console.warn("❌ Nie udało się zapisać na serwerze (używam localStorage)", err);
+        return false;
     }
 }
 
-// Wczytaj stan z serwera
 async function loadState() {
-    const client = initSupabase();
+    const client = getSupabase();
     
     try {
         const { data, error } = await client
@@ -52,21 +82,25 @@ async function loadState() {
             .eq('id', 1)
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-
         if (data?.data) {
             appState = { ...defaultState, ...data.data };
             console.log("✅ Dane wczytane z Supabase");
         } else {
-            appState = { ...defaultState };
+            // Jeśli nie ma danych na serwerze - ładujemy z localStorage
+            const localData = localStorage.getItem("sokData");
+            if (localData) {
+                appState = { ...defaultState, ...JSON.parse(localData) };
+                console.log("✅ Dane wczytane z localStorage");
+            }
         }
     } catch (err) {
-        console.warn("Nie udało się wczytać z serwera, używam localStorage");
-        const saved = localStorage.getItem("sokData");
-        if (saved) appState = { ...defaultState, ...JSON.parse(saved) };
+        console.warn("Nie udało się połączyć z serwerem, ładuję localStorage");
+        const localData = localStorage.getItem("sokData");
+        if (localData) appState = { ...defaultState, ...JSON.parse(localData) };
     }
-    
-    saveState(); // synchronizacja
+
+    // Zapisz ponownie na serwer (synchronizacja)
+    saveState();
     return appState;
 }
 
@@ -74,28 +108,25 @@ async function loadState() {
 // UPLOAD PDF
 // ======================
 
-async function uploadPDF(file, filename = null) {
-    const client = initSupabase();
+async function uploadPDF(file, customName = null) {
     if (!file) return null;
 
-    const fileName = filename || `wpis_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.pdf`;
+    const client = getSupabase();
+    const fileName = customName || `sok_wpis_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`;
 
     try {
-        const { data, error } = await client.storage
+        const { error: uploadError } = await client.storage
             .from('pdfy')
-            .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: true
-            });
+            .upload(fileName, file, { upsert: true });
 
-        if (error) throw error;
+        if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = client.storage
+        const { data: urlData } = client.storage
             .from('pdfy')
             .getPublicUrl(fileName);
 
-        console.log("✅ PDF zapisany:", publicUrl);
-        return publicUrl;
+        console.log("✅ PDF zapisany:", urlData.publicUrl);
+        return urlData.publicUrl;
     } catch (err) {
         console.error("Błąd uploadu PDF:", err);
         alert("Nie udało się zapisać PDF na serwerze.");
@@ -107,12 +138,11 @@ async function uploadPDF(file, filename = null) {
 // INICJALIZACJA
 // ======================
 
-// Nadpisujemy stare funkcje
 window.saveState = saveState;
 window.loadState = loadState;
 window.uploadPDF = uploadPDF;
 
-// Automatyczne wczytanie przy starcie
+// Automatyczne wczytanie danych przy starcie aplikacji
 document.addEventListener("DOMContentLoaded", async () => {
     await loadState();
 });
