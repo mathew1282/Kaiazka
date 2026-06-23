@@ -3,12 +3,8 @@
 // =====================================
 
 function initDane() {
-
-    const container =
-        document.getElementById("daneContainer");
-
+    const container = document.getElementById("daneContainer");
     if (!container) return;
-
     renderDane();
 }
 
@@ -17,75 +13,31 @@ function initDane() {
 // =====================================
 
 function renderDane() {
-
-    const container =
-        document.getElementById("daneContainer");
-
+    const container = document.getElementById("daneContainer");
     if (!container) return;
 
-    const columns =
-        appState.dane.columns;
-
-    const rows =
-        appState.dane.rows;
+    const columns = appState.dane.columns;
+    const rows = appState.dane.rows;
 
     let html = `
-
     <div class="card">
-
         <h2>Dane funkcjonariuszy</h2>
-
         <br>
-
-        <button
-            class="btn-success"
-            onclick="addDaneColumn()">
-
-            Dodaj kolumnę
-
-        </button>
-
-        <button
-            class="btn-primary"
-            onclick="addDaneRow()">
-
-            Dodaj funkcjonariusza
-
-        </button>
-
+        <button class="btn-success" onclick="addDaneColumn()">Dodaj kolumnę</button>
+        <button class="btn-primary" onclick="addDaneRow()">Dodaj funkcjonariusza</button>
         <br><br>
-
         <table>
-
             <thead>
                 <tr>
     `;
 
     columns.forEach((column, index) => {
-
         html += `
             <th>
-
                 ${column}
-
                 <br><br>
-
-                <button
-                    class="btn-primary"
-                    onclick="renameDaneColumn(${index})">
-
-                    Zmień
-
-                </button>
-
-                <button
-                    class="btn-danger"
-                    onclick="removeDaneColumn(${index})">
-
-                    Usuń
-
-                </button>
-
+                <button class="btn-primary" onclick="renameDaneColumn(${index})">Zmień</button>
+                <button class="btn-danger" onclick="removeDaneColumn(${index})">Usuń</button>
             </th>
         `;
     });
@@ -94,197 +46,97 @@ function renderDane() {
             <th>Akcje</th>
         </tr>
     </thead>
-
     <tbody>
     `;
 
     rows.forEach((row, rowIndex) => {
-
         html += `<tr>`;
-
         columns.forEach(column => {
-
             html += `
             <td>
-
-                <input
-                    type="text"
-                    value="${row[column] || ''}"
-
-                    onchange="
-                    updateDaneCell(
-                    ${rowIndex},
-                    '${column}',
-                    this.value
-                    )">
-
-            </td>
-            `;
+                <input type="text" value="${row[column] || ''}" 
+                       onchange="updateDaneCell(${rowIndex}, '${column}', this.value)">
+            </td>`;
         });
-
         html += `
             <td>
-
-                <button
-                    class="btn-danger"
-                    onclick="removeDaneRow(${rowIndex})">
-
-                    Usuń
-
-                </button>
-
+                <button class="btn-danger" onclick="removeDaneRow(${rowIndex})">Usuń</button>
             </td>
-        `;
-
-        html += `</tr>`;
+        </tr>`;
     });
 
-    html += `
-        </tbody>
-        </table>
-
-    </div>
-    `;
-
+    html += `</tbody></table></div>`;
     container.innerHTML = html;
 }
 
 // =====================================
-// KOLUMNY
+// FUNKCJE Z ZAPISEM NA SERWERZE
 // =====================================
 
-function addDaneColumn() {
-
-    const columnName =
-        prompt("Podaj nazwę kolumny");
-
+async function addDaneColumn() {
+    const columnName = prompt("Podaj nazwę kolumny");
     if (!columnName) return;
 
-    appState.dane.columns.push(
-        columnName
-    );
+    appState.dane.columns.push(columnName);
+    appState.dane.rows.forEach(row => row[columnName] = "");
 
-    appState.dane.rows.forEach(row => {
-
-        row[columnName] = "";
-    });
-
-    saveState();
-
+    await saveState();
     renderDane();
 }
 
-function renameDaneColumn(index) {
-
-    const oldName =
-        appState.dane.columns[index];
-
-    const newName =
-        prompt(
-            "Nowa nazwa kolumny",
-            oldName
-        );
-
+async function renameDaneColumn(index) {
+    const oldName = appState.dane.columns[index];
+    const newName = prompt("Nowa nazwa kolumny", oldName);
     if (!newName) return;
 
-    appState.dane.columns[index] =
-        newName;
-
+    appState.dane.columns[index] = newName;
     appState.dane.rows.forEach(row => {
-
-        row[newName] =
-            row[oldName];
-
+        row[newName] = row[oldName];
         delete row[oldName];
     });
 
-    saveState();
-
+    await saveState();
     renderDane();
 }
 
-function removeDaneColumn(index) {
+async function removeDaneColumn(index) {
+    const columnName = appState.dane.columns[index];
+    if (!confirm(`Usunąć kolumnę "${columnName}"?`)) return;
 
-    const columnName =
-        appState.dane.columns[index];
+    appState.dane.columns.splice(index, 1);
+    appState.dane.rows.forEach(row => delete row[columnName]);
 
-    if (
-        !confirm(
-            `Usunąć kolumnę "${columnName}" ?`
-        )
-    ) {
-        return;
-    }
-
-    appState.dane.columns.splice(
-        index,
-        1
-    );
-
-    appState.dane.rows.forEach(row => {
-
-        delete row[columnName];
-    });
-
-    saveState();
-
+    await saveState();
     renderDane();
 }
 
-// =====================================
-// WIERSZE
-// =====================================
-
-function addDaneRow() {
-
+async function addDaneRow() {
     const newRow = {};
+    appState.dane.columns.forEach(col => newRow[col] = "");
+    appState.dane.rows.push(newRow);
 
-    appState.dane.columns.forEach(col => {
-
-        newRow[col] = "";
-    });
-
-    appState.dane.rows.push(
-        newRow
-    );
-
-    saveState();
-
+    await saveState();
     renderDane();
 }
 
-function removeDaneRow(index) {
-
-    if (
-        !confirm(
-            "Usunąć funkcjonariusza?"
-        )
-    ) {
-        return;
-    }
-
-    appState.dane.rows.splice(
-        index,
-        1
-    );
-
-    saveState();
-
+async function removeDaneRow(index) {
+    if (!confirm("Usunąć funkcjonariusza?")) return;
+    appState.dane.rows.splice(index, 1);
+    await saveState();
     renderDane();
 }
 
-// =====================================
-// EDYCJA KOMÓRKI
-// =====================================
-
-function updateDaneCell(
-    rowIndex,
-    columnName,
-    value
-) {
-
-    appState.dane.rows[rowIndex][columnName] =
-        value;
-
-    saveState();
+async function updateDaneCell(rowIndex, columnName, value) {
+    appState.dane.rows[rowIndex][columnName] = value;
+    await saveState();
 }
+
+// =====================================
+// EXPOSE
+// =====================================
+window.addDaneColumn = addDaneColumn;
+window.renameDaneColumn = renameDaneColumn;
+window.removeDaneColumn = removeDaneColumn;
+window.addDaneRow = addDaneRow;
+window.removeDaneRow = removeDaneRow;
+window.updateDaneCell = updateDaneCell;
