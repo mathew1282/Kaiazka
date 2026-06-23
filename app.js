@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (jsonLoader) jsonLoader.addEventListener("change", importFromJSON);
 
     // Start
-    loadPage("dane");
+    loadPage("generator");
 
     // Menu
     document.querySelectorAll(".menu-btn").forEach(btn => {
