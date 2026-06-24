@@ -1,36 +1,22 @@
+let selectedPatrol = null;
 let selectedZgloszenia = [];
 let selectedPolecenia = [];
 
 // =====================================
-// GENERATOR WPISÓW
-// =====================================
-
-let selectedPatrol = null;
-let selectedZgloszeniaLine = null;
-let selectedPoleceniaLine = null;
-
-// =====================================
-// FORMATOWANIE - JEDNA LINIA
+// FORMATOWANIE
 // =====================================
 
 function forceOneLine(items) {
     if (!items) return "";
-    
     let arr = Array.isArray(items) ? items : String(items).split("\n");
-    
     return arr
         .map(item => String(item || "").trim())
         .filter(item => item.length > 1)
         .join(", ");
 }
 
-// =====================================
-// WSZYSCY Z PATROLI
-// =====================================
-
 function getAllPatrolMembersOneLine() {
     const members = new Set();
-
     appState.patrole.forEach(patrol => {
         if (patrol?.sklad && Array.isArray(patrol.sklad)) {
             patrol.sklad.forEach(person => {
@@ -39,12 +25,11 @@ function getAllPatrolMembersOneLine() {
             });
         }
     });
-
     return Array.from(members);
 }
 
 // =====================================
-// START
+// INICJALIZACJA
 // =====================================
 
 function initGenerator() {
@@ -67,26 +52,14 @@ function setupPersistentInputs() {
     const kzInput = document.getElementById("kzInput");
     const mkkInput = document.getElementById("mkkInput");
 
-    if (kzInput) kzInput.addEventListener("input", () => { appState.kz = kzInput.value; saveState(); });
-    if (mkkInput) mkkInput.addEventListener("input", () => { appState.mkk = mkkInput.value; saveState(); });
-}
-
-// =====================================
-// DOMYŚLNY SZABLON
-// =====================================
-
-function setDefaultTemplate() {
-    const select = document.getElementById("templateSelect");
-    if (!select) return;
-
-    if (appState.defaultTemplateIndex !== undefined && 
-        appState.defaultTemplateIndex < appState.szablony.length) {
-        select.value = appState.defaultTemplateIndex;
-    } else if (appState.szablony.length > 0) {
-        select.value = 0;
-        appState.defaultTemplateIndex = 0;
-        saveState();
-    }
+    if (kzInput) kzInput.addEventListener("input", () => { 
+        appState.kz = kzInput.value; 
+        saveState(); 
+    });
+    if (mkkInput) mkkInput.addEventListener("input", () => { 
+        appState.mkk = mkkInput.value; 
+        saveState(); 
+    });
 }
 
 // =====================================
@@ -128,7 +101,6 @@ function renderPatrolPreview() {
             <span>Wybrany patrol:</span>
             <span class="patrol-name">${patrol.nazwa}</span>
             <span class="patrol-dowodca">Dowódca: ${patrol.dowodca || "-"}</span>
-            <span class="patrol-kierowca">Kierowca: ${patrol.kierowca || "-"}</span>
         </div>`;
 }
 
@@ -146,18 +118,13 @@ function renderTemplateList() {
     });
     select.innerHTML = html;
 
-    setDefaultTemplate();
-
-    select.addEventListener("change", () => {
-        if (select.value !== "") {
-            appState.defaultTemplateIndex = parseInt(select.value);
-            saveState();
-        }
-    });
+    if (appState.defaultTemplateIndex !== undefined && appState.defaultTemplateIndex < appState.szablony.length) {
+        select.value = appState.defaultTemplateIndex;
+    }
 }
 
 // =====================================
-// ZGŁOSZENIA
+// ZGŁOSZENIA I POLECENIA
 // =====================================
 
 function renderZgloszeniaLines() {
@@ -195,10 +162,7 @@ function toggleZgloszenie(opis) {
     renderZgloszeniaItems();
 }
 
-// =====================================
-// POLECENIA
-// =====================================
-
+// Analogicznie dla Poleceń
 function renderPoleceniaLines() {
     const container = document.getElementById("poleceniaLinie");
     if (!container) return;
@@ -235,10 +199,10 @@ function togglePolecenie(opis) {
 }
 
 // =====================================
-// GENEROWANIE - z automatycznym odznaczaniem
+// GENEROWANIE WPISU
 // =====================================
 
-function generateEntry() {
+async function generateEntry() {
     if (selectedPatrol === null) {
         alert("Wybierz patrol");
         return;
@@ -257,10 +221,10 @@ function generateEntry() {
 
     let text = template.tresc;
 
-    const skladLine     = forceOneLine(patrol.sklad || []);
-    const wszyscyLine   = forceOneLine(getAllPatrolMembersOneLine());
+    const skladLine = forceOneLine(patrol.sklad || []);
+    const wszyscyLine = forceOneLine(getAllPatrolMembersOneLine());
     const zgloszeniaLine = forceOneLine(selectedZgloszenia);
-    const poleceniaLine  = forceOneLine(selectedPolecenia);
+    const poleceniaLine = forceOneLine(selectedPolecenia);
 
     const now = new Date();
     const data = now.toLocaleDateString("pl-PL");
@@ -282,25 +246,21 @@ function generateEntry() {
 
     document.getElementById("generatedEntry").value = text;
 
-    // === AUTOMATYCZNE ODZNACZANIE PO GENEROWANIU ===
+    // Automatyczne odznaczanie po wygenerowaniu
     selectedZgloszenia = [];
     selectedPolecenia = [];
     renderZgloszeniaItems();
     renderPoleceniaItems();
 }
 
-// =====================================
-// KOPIUJ + TOAST
-// =====================================
-
 function copyEntry() {
     const textarea = document.getElementById("generatedEntry");
     if (!textarea.value.trim()) {
-        showToast("Najpierw wygeneruj wpis", "warning");
+        alert("Najpierw wygeneruj wpis");
         return;
     }
     navigator.clipboard.writeText(textarea.value).then(() => {
-        showToast("✅ Skopiowano do schowka");
+        alert("✅ Skopiowano do schowka!");
     });
 }
 
@@ -312,20 +272,14 @@ function clearEntry() {
     renderPoleceniaItems();
 }
 
-function saveToKsiazka() {
-    alert("Funkcja zapisu do Książki wydarzeń będzie dostępna wkrótce");
-}
-
-function showToast(message, type = "success") {
-    let toast = document.getElementById("customToast");
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "customToast";
-        toast.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:8px;color:white;font-weight:600;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.3);transition:all 0.3s ease;`;
-        document.body.appendChild(toast);
-    }
-    toast.textContent = message;
-    toast.style.background = type === "success" ? "#16a34a" : "#eab308";
-    toast.style.opacity = "1";
-    setTimeout(() => { toast.style.opacity = "0"; setTimeout(() => toast.remove(), 300); }, 1400);
-}
+// =====================================
+// EXPOSE
+// =====================================
+window.generateEntry = generateEntry;
+window.copyEntry = copyEntry;
+window.clearEntry = clearEntry;
+window.selectPatrol = selectPatrol;
+window.selectZgloszeniaLine = selectZgloszeniaLine;
+window.toggleZgloszenie = toggleZgloszenie;
+window.selectPoleceniaLine = selectPoleceniaLine;
+window.togglePolecenie = togglePolecenie;
