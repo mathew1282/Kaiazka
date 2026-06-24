@@ -43,7 +43,7 @@ function renderLinie() {
                         <input type="text" value="${appState.linie?.osobowa || ''}" 
                                onchange="saveLine('osobowa', this.value)" 
                                placeholder="np. 275"
-                               style="width:100%; padding:10px; font-size:16px; color:black;">
+                               style="width:100%; padding:10px; font-size:16px; color:white;">
                     </td>
                 </tr>
                 <tr style="background:#854d0e; color:white;">
@@ -125,7 +125,7 @@ function createPersonTable(person, today) {
     return `
     <div style="margin-bottom:30px;">
         <!-- Scalony wiersz z nazwiskiem i imieniem -->
-        <div style="background: #FFFF00; color:white; padding:14px 18px; font-size:18px; font-weight:bold; border-radius:6px 6px 0 0;">
+        <div style="background: #FFFF00; color:black; padding:14px 18px; font-size:18px; font-weight:bold; border-radius:6px 6px 0 0;">
             ${person.fullName}
         </div>
         
