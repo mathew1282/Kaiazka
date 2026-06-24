@@ -38,7 +38,12 @@ const defaultState = {
     patrole: [],
     szablony: [],
     kz: "",
-    mkk: ""
+    mkk: "",
+    linie: {
+        szlak: "",
+        osobowa: "",
+        towarowa: ""
+    }  
  
 };
 
