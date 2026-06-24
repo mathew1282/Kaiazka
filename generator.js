@@ -1,9 +1,15 @@
+// =====================================
+// GENERATOR WPISÓW
+// =====================================
+
 let selectedPatrol = null;
 let selectedZgloszenia = [];
 let selectedPolecenia = [];
+let selectedZgloszeniaLine = null;
+let selectedPoleceniaLine = null;
 
 // =====================================
-// FORMATOWANIE
+// POMOCNICZE FUNKCJE
 // =====================================
 
 function forceOneLine(items) {
@@ -52,14 +58,28 @@ function setupPersistentInputs() {
     const kzInput = document.getElementById("kzInput");
     const mkkInput = document.getElementById("mkkInput");
 
-    if (kzInput) kzInput.addEventListener("input", () => { 
-        appState.kz = kzInput.value; 
-        saveState(); 
-    });
-    if (mkkInput) mkkInput.addEventListener("input", () => { 
-        appState.mkk = mkkInput.value; 
-        saveState(); 
-    });
+    if (kzInput) {
+        kzInput.addEventListener("input", () => {
+            appState.kz = kzInput.value;
+            saveState();
+        });
+    }
+    if (mkkInput) {
+        mkkInput.addEventListener("input", () => {
+            appState.mkk = mkkInput.value;
+            saveState();
+        });
+    }
+}
+
+function setDefaultTemplate() {
+    const select = document.getElementById("templateSelect");
+    if (!select) return;
+
+    if (appState.defaultTemplateIndex !== undefined && 
+        appState.defaultTemplateIndex < appState.szablony.length) {
+        select.value = appState.defaultTemplateIndex;
+    }
 }
 
 // =====================================
@@ -100,7 +120,6 @@ function renderPatrolPreview() {
         <div class="patrol-header">
             <span>Wybrany patrol:</span>
             <span class="patrol-name">${patrol.nazwa}</span>
-            <span class="patrol-dowodca">Dowódca: ${patrol.dowodca || "-"}</span>
         </div>`;
 }
 
@@ -117,14 +136,10 @@ function renderTemplateList() {
         html += `<option value="${index}">${template.nazwa}</option>`;
     });
     select.innerHTML = html;
-
-    if (appState.defaultTemplateIndex !== undefined && appState.defaultTemplateIndex < appState.szablony.length) {
-        select.value = appState.defaultTemplateIndex;
-    }
 }
 
 // =====================================
-// ZGŁOSZENIA I POLECENIA
+// ZGŁOSZENIA
 // =====================================
 
 function renderZgloszeniaLines() {
@@ -162,7 +177,10 @@ function toggleZgloszenie(opis) {
     renderZgloszeniaItems();
 }
 
-// Analogicznie dla Poleceń
+// =====================================
+// POLECENIA
+// =====================================
+
 function renderPoleceniaLines() {
     const container = document.getElementById("poleceniaLinie");
     if (!container) return;
@@ -199,7 +217,7 @@ function togglePolecenie(opis) {
 }
 
 // =====================================
-// GENEROWANIE WPISU
+// GENEROWANIE
 // =====================================
 
 async function generateEntry() {
@@ -246,7 +264,7 @@ async function generateEntry() {
 
     document.getElementById("generatedEntry").value = text;
 
-    // Automatyczne odznaczanie po wygenerowaniu
+    // Reset zaznaczeń
     selectedZgloszenia = [];
     selectedPolecenia = [];
     renderZgloszeniaItems();
@@ -255,7 +273,7 @@ async function generateEntry() {
 
 function copyEntry() {
     const textarea = document.getElementById("generatedEntry");
-    if (!textarea.value.trim()) {
+    if (!textarea || !textarea.value.trim()) {
         alert("Najpierw wygeneruj wpis");
         return;
     }
@@ -273,7 +291,7 @@ function clearEntry() {
 }
 
 // =====================================
-// EXPOSE
+// EXPOSE FUNKCJI
 // =====================================
 window.generateEntry = generateEntry;
 window.copyEntry = copyEntry;
